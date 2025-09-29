@@ -1,7 +1,9 @@
 # backend/main.py
 import tempfile
+
+from backend import services
 from backend.services import save_dataset_from_path, read_docx_from_path
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from backend.models import init_db
 from backend.services import read_docx_bytes, save_dataset, search_similar, aggregate_codes
@@ -62,6 +64,66 @@ def analyze(dataset_id: int):
 @app.post("/memo/{dataset_id}")
 def memo(dataset_id: int):
     return generate_memo(dataset_id)
+
+
+@app.post("/transcripts/upload")
+async def handle_transcript_upload(file: UploadFile = File(...)):
+    """
+    澶勭悊 transcript 鏂囦欢涓婁紶鐨勮矾鐢便€�
+    瀹冧細鑷姩浠庢枃浠跺悕涓彁鍙� title锛屽苟鏍规嵁鏂囦欢绫诲瀷 (.txt 鎴� .docx) 璇诲彇 content銆�
+    """
+    title = file.filename
+    content_bytes = await file.read()
+    content = ""
+
+    try:
+        if title.lower().endswith(".docx"):
+            # 浣跨敤 services.py 涓凡鏈夌殑杈呭姪鍑芥暟鏉ヨ鍙� docx 瀛楄妭
+            content = services.read_docx_bytes(content_bytes)
+        else:
+            # 榛樿鎸� utf-8 瑙ｇ爜
+            content = content_bytes.decode("utf-8")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"鏂囦欢瑙ｆ瀽澶辫触: {e}")
+
+    # 璋冪敤 service 鍑芥暟灏嗗唴瀹瑰瓨鍏ユ暟鎹簱
+    return services.create_transcript(title=title, content=content)
+
+
+@app.get("/transcripts")
+def get_transcripts():
+    return services.list_transcripts()
+
+@app.get("/transcripts")
+def get_transcripts():
+    return services.list_transcripts()
+
+@app.post("/memos")
+def upload_memo(title: str, content: str):
+    return services.create_memo(title, content)
+
+@app.get("/memos")
+def get_memos():
+    return services.list_memos()
+
+
+@app.post("/codes")
+def create_code(code: str, excerpt: str, transcript_id: int = None, memo_id: int = None):
+    try:
+        return services.create_code(code, excerpt, transcript_id, memo_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/codes")
+def get_codes():
+    return services.list_codes()
+
+@app.delete("/codes/{code_id}")
+def remove_code(code_id: int):
+    result = services.delete_code(code_id)
+    if not result["deleted"]:
+        raise HTTPException(status_code=404, detail="Code not found")
+    return result
 
 
 if __name__ == "__main__":

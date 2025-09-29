@@ -2,22 +2,22 @@
 import os
 import json
 from dotenv import load_dotenv
-from openai import OpenAI  # 统一导入
+from openai import OpenAI  # 缁熶竴瀵煎叆
 import numpy as np
 from sqlalchemy.orm import Session
 from docx import Document
 import tempfile
 
-from backend.models import SessionLocal, Dataset, Chunk
+from backend.models import SessionLocal, Dataset, Chunk, Code, Transcript, Memo
 
-# 加载环境变量
+# 鍔犺浇鐜鍙橀噺
 load_dotenv()
 
-# --- 1. 初始化 OpenAI 客户端 (这是正确的现代用法) ---
-# 确保你的 .env 文件中有 OPENAI_API_KEY
+# --- 1. 鍒濆鍖� OpenAI 瀹㈡埛绔� (杩欐槸姝ｇ‘鐨勭幇浠ｇ敤娉�) ---
+# 纭繚浣犵殑 .env 鏂囦欢涓湁 OPENAI_API_KEY
 client = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
-    base_url=os.getenv("OPENAI_API_BASE_URL")  # 如果使用代理，则保留此项
+    base_url=os.getenv("OPENAI_API_BASE_URL")  # 濡傛灉浣跨敤浠ｇ悊锛屽垯淇濈暀姝ら」
 )
 EMBED_MODEL = os.getenv("OPENAI_EMBED_MODEL", "text-embedding-3-small")
 LLM_MODEL = os.getenv("OPENAI_LLM_MODEL", "gpt-4o-mini")
@@ -29,7 +29,7 @@ def read_docx_bytes(file_bytes):
         f.write(file_bytes)
         path = f.name
     doc = Document(path)
-    # 清理临时文件
+    # 娓呯悊涓存椂鏂囦欢
     os.remove(path)
     return "\n".join(p.text for p in doc.paragraphs)
 
@@ -54,7 +54,7 @@ def chunk_text(text, approx_tokens=CHUNK_TOKENS, overlap_ratio=0.1):
 
 
 def get_embedding(text: str):
-    # 你的 embedding 调用已经是最新语法，无需修改
+    # 浣犵殑 embedding 璋冪敤宸茬粡鏄渶鏂拌娉曪紝鏃犻渶淇敼
     resp = client.embeddings.create(
         model=EMBED_MODEL,
         input=text
@@ -113,9 +113,9 @@ def search_similar(dataset_id: int, query: str, top_k=5):
     return results
 
 
-# --- 2. 更新 analyze_chunk_with_llm 函数 ---
+# --- 2. 鏇存柊 analyze_chunk_with_llm 鍑芥暟 ---
 def analyze_chunk_with_llm(chunk_text: str):
-    """使用 OpenAI v1.x.x SDK 更新了此函数"""
+    """浣跨敤 OpenAI v1.x.x SDK 鏇存柊浜嗘鍑芥暟"""
     system = "You are a qualitative research assistant. Produce a JSON object with keys: 'summary' (short), 'codes' (list of objects with 'code', 'definition', and 'quotes' list). Output JSON only."
     prompt = f"""Transcript chunk:
 \"\"\"{chunk_text}\"\"\"
@@ -125,7 +125,7 @@ Please produce:
 Return JSON only. """
 
     try:
-        # 使用 client.chat.completions.create 替代旧的 openai.ChatCompletion.create
+        # 浣跨敤 client.chat.completions.create 鏇夸唬鏃х殑 openai.ChatCompletion.create
         res = client.chat.completions.create(
             model=LLM_MODEL,
             messages=[
@@ -133,16 +133,16 @@ Return JSON only. """
                 {"role": "user", "content": prompt}
             ],
             temperature=0.0,
-            # --- 3. 添加 JSON 模式以提高可靠性 ---
+            # --- 3. 娣诲姞 JSON 妯″紡浠ユ彁楂樺彲闈犳€� ---
             response_format={"type": "json_object"}
         )
 
-        # 使用 res.choices[0].message.content 替代字典访问
+        # 浣跨敤 res.choices[0].message.content 鏇夸唬瀛楀吀璁块棶
         content = res.choices[0].message.content
         return json.loads(content)
 
     except Exception as e:
-        # 更好的错误处理，可以打印错误以便调试
+        # 鏇村ソ鐨勯敊璇鐞嗭紝鍙互鎵撳嵃閿欒浠ヤ究璋冭瘯
         print(f"Error analyzing chunk with LLM: {e}")
         return {"error": str(e)}
 
@@ -153,7 +153,7 @@ def aggregate_codes(dataset_id: int, top_n=30):
     code_counts = {}
     for c in chunks:
         out = analyze_chunk_with_llm(c.text)
-        # 检查是否有错误，或输出是否为字典
+        # 妫€鏌ユ槸鍚︽湁閿欒锛屾垨杈撳嚭鏄惁涓哄瓧鍏�
         if not isinstance(out, dict): continue
 
         codes = out.get("codes", [])
@@ -168,7 +168,7 @@ def aggregate_codes(dataset_id: int, top_n=30):
 
 
 # ----------------------------------------------------
-# 以下是你提供的额外函数，它们本身不需要修改
+# 浠ヤ笅鏄綘鎻愪緵鐨勯澶栧嚱鏁帮紝瀹冧滑鏈韩涓嶉渶瑕佷慨鏀�
 # ----------------------------------------------------
 
 def stream_chunks_from_file(path, approx_tokens=CHUNK_TOKENS, overlap_ratio=0.1):
@@ -237,18 +237,18 @@ def read_docx_from_path(path):
 
 def generate_memo(dataset_id: int):
     """
-    根据数据集中的文本块样本生成一份分析备忘录 (analytic memo)。
+    鏍规嵁鏁版嵁闆嗕腑鐨勬枃鏈潡鏍锋湰鐢熸垚涓€浠藉垎鏋愬蹇樺綍 (analytic memo)銆�
     """
     db = SessionLocal()
-    # 取样前 15 个文本块以控制成本和速度
+    # 鍙栨牱鍓� 15 涓枃鏈潡浠ユ帶鍒舵垚鏈拰閫熷害
     chunks = db.query(Chunk).filter(Chunk.dataset_id == dataset_id).limit(15).all()
     texts = [c.text for c in chunks]
     db.close()
 
     if not texts:
-        return {"summary": "没有足够的数据来生成备忘录。", "contradictions": [], "followups": []}
+        return {"summary": "娌℃湁瓒冲鐨勬暟鎹潵鐢熸垚澶囧繕褰曘€�", "contradictions": [], "followups": []}
 
-    # 将文本块拼接成一个连贯的样本
+    # 灏嗘枃鏈潡鎷兼帴鎴愪竴涓繛璐殑鏍锋湰
     full_text_sample = "\n---\n".join(texts)
 
     system_prompt = "You are a qualitative research analyst. Your task is to write an analytic memo based on interview excerpts. Your output must be a valid JSON object."
@@ -266,20 +266,95 @@ Write an analytic memo with three sections. The output must be a JSON object wit
 
     try:
         res = client.chat.completions.create(
-            model=LLM_MODEL,  # 使用在文件顶部定义的模型变量
+            model=LLM_MODEL,  # 浣跨敤鍦ㄦ枃浠堕《閮ㄥ畾涔夌殑妯″瀷鍙橀噺
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
             temperature=0.7,
-            # ✅ 强制使用 JSON 输出模式
+            # 鉁� 寮哄埗浣跨敤 JSON 杈撳嚭妯″紡
             response_format={"type": "json_object"}
         )
-        # ✅ 通过对象属性访问结果
+        # 鉁� 閫氳繃瀵硅薄灞炴€ц闂粨鏋�
         content = res.choices[0].message.content
         return json.loads(content)
 
     except Exception as e:
-        print(f"❌ 生成备忘录时出错: {e}")
-        return {"error": "调用 API 生成备忘录失败。"}
+        print(f"鉂� 鐢熸垚澶囧繕褰曟椂鍑洪敊: {e}")
+        return {"error": "璋冪敤 API 鐢熸垚澶囧繕褰曞け璐ャ€�"}
+
+
+# Transcripts
+def create_transcript(title: str, content: str):
+    db = SessionLocal()
+    transcript = Transcript(title=title, content=content)
+    db.add(transcript)
+    db.commit()
+    db.refresh(transcript)
+    db.close()
+    return transcript
+
+def list_transcripts():
+    db = SessionLocal()
+    transcripts = db.query(Transcript).all()
+    db.close()
+    return transcripts
+
+# Memos
+def create_memo(title: str, content: str):
+    db = SessionLocal()
+    memo = Memo(title=title, content=content)
+    db.add(memo)
+    db.commit()
+    db.refresh(memo)
+    db.close()
+    return memo
+
+def list_memos():
+    db = SessionLocal()
+    memos = db.query(Memo).all()
+    db.close()
+    return memos
+
+
+def create_code(code: str, excerpt: str, transcript_id: int = None, memo_id: int = None):
+    db = SessionLocal()
+
+    if not transcript_id and not memo_id:
+        db.close()
+        raise ValueError("Code must reference either a transcript or a memo")
+
+    new_code = Code(code=code, excerpt=excerpt,
+                    transcript_id=transcript_id, memo_id=memo_id)
+    db.add(new_code)
+    db.commit()
+    db.refresh(new_code)
+    db.close()
+    return new_code
+
+def list_codes():
+    db = SessionLocal()
+    codes = db.query(Code).all()
+    results = []
+    for c in codes:
+        results.append({
+            "id": c.id,
+            "code": c.code,
+            "excerpt": c.excerpt,
+            "source": c.transcript.title if c.transcript else c.memo.title,
+            "created_at": c.created_at
+        })
+    db.close()
+    return results
+
+def delete_code(code_id: int):
+    db = SessionLocal()
+    code = db.query(Code).filter(Code.id == code_id).first()
+    if code:
+        db.delete(code)
+        db.commit()
+        db.close()
+        return {"deleted": True}
+    db.close()
+    return {"deleted": False}
 
