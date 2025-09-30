@@ -1,0 +1,22 @@
+# Dockerfile.backend
+
+# 1. 使用官方的 Python 镜像作为基础
+FROM python:3.12-slim
+
+# 2. 设置工作目录
+WORKDIR /app
+
+# 3. 复制依赖文件并安装
+#    先复制这个文件可以利用 Docker 的缓存机制，如果依赖不变，则不会重新安装
+COPY requirements.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 4. 复制后端代码到工作目录
+COPY ./backend /app
+
+# 5. 暴露后端运行的端口
+EXPOSE 8000
+
+# 6. 定义启动命令
+#    --host 0.0.0.0 使得容器可以从外部访问
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

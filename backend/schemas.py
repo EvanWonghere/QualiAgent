@@ -1,17 +1,8 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# @Time    : 2025/9/29 16:26
-# @Author  : EvanWong
-# @File    : schemas.py
-# @Project : QualiAgent
-
-
 # backend/schemas.py
 from pydantic import BaseModel
 from typing import Optional
 import datetime
 
-# --- Base Models ---
 class MemoBase(BaseModel):
     title: str
     content: str
@@ -21,16 +12,31 @@ class CodeBase(BaseModel):
     excerpt: str
     transcript_id: Optional[int] = None
     memo_id: Optional[int] = None
-    dataset_id: Optional[int] = None
 
-# --- Create Models ---
 class MemoCreate(MemoBase):
     pass
 
 class CodeCreate(CodeBase):
     pass
 
-# --- Response Models ---
+# ✨ --- NEW: Schema to hold AI configuration ---
+class AIConfig(BaseModel):
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
+    llm_model: Optional[str] = None
+    embed_model: Optional[str] = None
+
+# ✨ --- Updated request schemas to include the config ---
+class AIGenerateRequest(BaseModel):
+    transcript_id: int
+    config: Optional[AIConfig] = None
+
+class AISearchRequest(BaseModel):
+    transcript_id: int
+    query: str
+    top_k: int = 5
+    config: Optional[AIConfig] = None
+
 class Memo(MemoBase):
     id: int
     class Config:
@@ -39,9 +45,22 @@ class Memo(MemoBase):
 class Transcript(BaseModel):
     id: int
     title: str
-    content: str
+    status: str  # ✨ FIX: Add the status field so the API returns it.
     class Config:
         from_attributes = True
+
+# ✨ --- NEW: Schemas for detailed single-item views ---
+class TranscriptDetail(Transcript):
+    content: str
+
+class MemoDetail(Memo):
+    content: str # Memo already had content in its base, this makes it explicit for the response
+# ---
+
+# ✨ --- NEW: The missing response schema ---
+class CodeGenerationResponse(BaseModel):
+    message: str
+
 
 class Code(CodeBase):
     id: int
@@ -50,9 +69,10 @@ class Code(CodeBase):
     class Config:
         from_attributes = True
 
-class Dataset(BaseModel):
-    id: int
-    name: str
-    created_at: datetime.datetime
-    class Config:
-        from_attributes = True
+# ✨ --- NEW: Schema for the default config response ---
+class AIConfigDefaults(BaseModel):
+    api_key_set: bool
+    base_url: Optional[str] = None
+    llm_model: Optional[str] = None
+    embed_model: Optional[str] = None
+    chunk_tokens: Optional[int] = None

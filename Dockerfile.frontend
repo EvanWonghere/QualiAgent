@@ -1,0 +1,20 @@
+# Dockerfile.frontend
+
+# 1. 使用与后端相同的 Python 基础镜像
+FROM python:3.12-slim
+
+# 2. 设置工作目录
+WORKDIR /app
+
+# 3. 复制并安装依赖
+COPY requirements.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 4. 复制前端代码
+COPY ./frontend /app
+
+# 5. 暴露 Streamlit 运行的端口
+EXPOSE 8501
+
+# 6. 定义启动命令
+CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
