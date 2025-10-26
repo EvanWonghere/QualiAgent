@@ -16,7 +16,7 @@ __pycache__/
 *.pyd
 
 # 忽略工具缓存
-.cache_ggshield/
+.cache_ggshield
 
 # 忽略常见的虚拟环境目录
 venv/
