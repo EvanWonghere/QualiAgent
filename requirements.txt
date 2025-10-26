@@ -9,4 +9,4 @@ numpy
 python-multipart
 python-docx
 requests
-
+pydantic

@@ -9,6 +9,13 @@ from typing import List
 from sqlalchemy.orm import Session
 
 from backend import services, schemas
+
+# backend/main.py (additions)
+from backend.api import codebook as codebook_router
+from backend.api import events as events_router
+from backend.api import review as review_router
+from backend.api import segments as segments_router
+
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -26,6 +33,10 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 app = FastAPI(title="Qualitative Research Agent API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
+app.include_router(codebook_router.router, prefix="/codebook", tags=["codebook"])
+app.include_router(events_router.router,   prefix="/events",   tags=["events"])
+app.include_router(review_router.router,   prefix="/review",   tags=["review"])
+app.include_router(segments_router.router, prefix="/segments", tags=["segments"])
 # --- Dataset & AI Analysis Routes ---
 
 # ✨ --- The Database Session Dependency ---
