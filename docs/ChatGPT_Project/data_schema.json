@@ -1,0 +1,29 @@
+{
+  "transcripts": {
+    "id": "integer",
+    "title": "string",
+    "file_path": "string",
+    "status": "string"
+  },
+  "chunks": {
+    "id": "integer",
+    "transcript_id": "integer",
+    "text": "string",
+    "embedding": "string",
+    "start_pos": "integer",
+    "end_pos": "integer"
+  },
+  "memos": {
+    "id": "integer",
+    "title": "string",
+    "content": "string"
+  },
+  "codes": {
+    "id": "integer",
+    "code": "string",
+    "excerpt": "string",
+    "created_at": "datetime",
+    "transcript_id": "integer",
+    "memo_id": "integer"
+  }
+}

@@ -8,8 +8,8 @@ QualiAgent helps researchers and students organize, code, and analyze qualitativ
 
 ## 🚀 **Start-Up Plan: Lightweight Code Stack**
 
-- **Backend:** FastAPI (or Flask) with just a few clean endpoints.
-- **Frontend:** Streamlit or Gradio for quick iteration — no heavy JS frameworks.
+- **Backend:** FastAPI with just a few clean endpoints.
+- **Frontend:** Streamlit for quick iteration — no heavy JS frameworks.
 - **Database:** Initially SQLite (or simple `.json` / `.csv` files for prototyping).
 - **AI Integration:**
   - GPT-4/5 (for analytical insights and coding assistance).

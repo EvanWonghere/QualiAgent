@@ -1,0 +1,29 @@
+# 忽略 macOS 操作系统文件
+.DS_Store
+
+# 忽略环境变量文件 (包含敏感信息)
+.env
+.env.*
+!.env.example
+
+# 忽略 IDE 配置文件 (JetBrains)
+.idea/
+
+# 忽略 Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 忽略工具缓存
+.cache_ggshield/
+
+# 忽略常见的虚拟环境目录
+venv/
+.venv/
+env/
+.env/
+
+# 忽略测试和覆盖率报告
+.pytest_cache/
+.coverage
