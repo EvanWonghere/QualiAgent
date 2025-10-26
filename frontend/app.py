@@ -84,7 +84,7 @@ def page_transcript_viewer():
             st.session_state["transcript_id"] = transcript_id
 
         with cols[1]:
-            btn_load = st.button("Load Segments", key=K("tv", "load_btn"), use_container_width=True)
+            btn_load = st.button("Load Segments", key=K("tv", "load_btn"), width='stretch')
 
         with cols[2]:
             show_raw = st.checkbox("Show raw JSON", key=K("tv", "show_raw"), value=False)
@@ -106,7 +106,7 @@ def page_transcript_viewer():
             # Normalize to DataFrame
             df = pd.json_normalize(data)
             st.markdown(f"**{len(df)}** segments found for **{transcript_id}**.")
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, width='stretch')
         else:
             st.info("No segments returned.")
 
@@ -128,7 +128,7 @@ def page_review_queue():
                 help="Client-side filter (simple contains on concatenated fields).",
             )
         with cols[1]:
-            refresh = st.button("Refresh", key=K("rq", "refresh"), use_container_width=True)
+            refresh = st.button("Refresh", key=K("rq", "refresh"), width='stretch')
 
     # Fetch queue (refresh busts cache by touching a dummy session key)
     if refresh:
@@ -150,7 +150,7 @@ def page_review_queue():
             df["_concat"] = df.astype(str).agg(" ".join, axis=1).str.lower()
             df = df[df["_concat"].str.contains(q, na=False)].drop(columns=["_concat"])
         st.markdown(f"Showing **{len(df)}** items.")
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(df, width='stretch')
     else:
         st.info("Queue is empty.")
 
@@ -171,7 +171,7 @@ def page_codebook_manager():
             with st.expander("Info"):
                 st.write("The codebook below is fetched from the backend `/codebook` mock fixture.")
         with cols[2]:
-            refresh = st.button("Refresh", key=K("cb", "refresh"), use_container_width=True)
+            refresh = st.button("Refresh", key=K("cb", "refresh"), width='stretch')
 
     if refresh:
         st.cache_data.clear()
@@ -204,7 +204,7 @@ def page_codebook_manager():
 
         items = [it for it in data if _match(it)]
 
-    st.markdown(f"Showing **{len(items)}** / {len(data)}** items")
+    st.markdown(f"Showing **{len(items)} / {len(data)}** items")
 
     # Render each item (stable unique keys)
     for idx, item in enumerate(items):
