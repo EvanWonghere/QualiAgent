@@ -28,25 +28,31 @@ def list_tables(e: Engine) -> list[str]:
 
 
 def run():
-    """
-    Phase 0.5 migration runner:
-    - runs 0001_init_v2.upgrade(engine)
-    """
-    print("=== QualiAgent Migration Runner ===")
-    print("DB URL:", engine.url)
+    # """
+    # Phase 0.5 migration runner:
+    # - runs 0001_init_v2.upgrade(engine)
+    # """
+    # print("=== QualiAgent Migration Runner ===")
+    # print("DB URL:", engine.url)
 
-    before = list_tables(engine)
-    print("Existing tables (before):", before)
+    # before = list_tables(engine)
+    # print("Existing tables (before):", before)
 
-    print("Running migration: backend.migrations.0001_init_v2")
-    upgrade = load_migration("backend.migrations.0001_init_v2")
-    upgrade(engine)
+    # print("Running migration: backend.migrations.0001_init_v2")
+    # upgrade = load_migration("backend.migrations.0001_init_v2")
+    # upgrade(engine)
 
-    after = list_tables(engine)
-    print("Existing tables (after):", after)
+    # after = list_tables(engine)
+    # print("Existing tables (after):", after)
 
-    created = [t for t in after if t not in before]
-    print("Newly created tables:", created if created else "None")
+    # created = [t for t in after if t not in before]
+    # print("Newly created tables:", created if created else "None")
+    # print("Migration complete.")
+
+    print("Running migration: 0001_init_v2")
+    load_migration("backend.migrations.0001_init_v2")(engine)
+    print("Running migration: 0002_docx_import_basics")
+    load_migration("backend.migrations.0002_docx_import_basics")(engine)
     print("Migration complete.")
 
 

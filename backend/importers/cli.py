@@ -5,6 +5,7 @@ import csv
 import json
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Type
+from datetime import datetime
 
 from pydantic import BaseModel, ValidationError
 
@@ -12,6 +13,8 @@ from pydantic import BaseModel, ValidationError
 from backend.contracts.models import (
     Segment, Event, CodebookItem, EventLabel, ReviewDecision
 )
+from backend.importers.docx_importer import parse_docx
+from backend.importers.db_writer import write_imported_dir
 
 KIND_TO_MODEL: Dict[str, Type[BaseModel]] = {
     "segment": Segment,
@@ -20,6 +23,12 @@ KIND_TO_MODEL: Dict[str, Type[BaseModel]] = {
     "label": EventLabel,
     "review": ReviewDecision,
 }
+
+def datetime_serializer(obj):
+    """JSON serializer for objects not serializable by default json code"""
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    raise TypeError (f"Type {type(obj)} not serializable")
 
 def iter_csv(path: Path) -> Iterable[Dict[str, Any]]:
     with path.open("r", encoding="utf-8-sig", newline="") as f:
@@ -102,6 +111,23 @@ def cmd_import(args: argparse.Namespace) -> int:
     print(f"Wrote {counter} normalized records to {out_dir}")
     return 0
 
+def cmd_docx(args):
+    from pathlib import Path
+    out_dir = Path("backend/fixtures/imported")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    data = parse_docx(Path(args.file), args.transcript_id)
+    for key, rows in data.items():
+        out = out_dir / f"{args.transcript_id}.{key}.jsonl"
+        with out.open("w", encoding="utf-8") as w:
+            for r in rows:
+                try:
+                    w.write(json.dumps(r, default=datetime_serializer, ensure_ascii=False) + "\n")
+                except TypeError as e:
+                    print(f"Skipping row due to serialization error: {e}. Row data: {r}")
+
+        print(f"Wrote {len(rows)} {key} to {out}")
+    return 0
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="qa-import", description="QualiAgent Importer CLI (Phase 0.5)")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -116,6 +142,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_imp = sub.add_parser("import", parents=[common], help="Normalize and write JSONL (no DB write in Phase 0.5)")
     p_imp.add_argument("--out", help="Output directory for normalized JSONL")
     p_imp.set_defaults(func=cmd_import)
+
+    p_docx = sub.add_parser("docx", help="Import a .docx transcript into V2 fixtures (no DB write)")
+    p_docx.add_argument("--transcript-id", required=True)
+    p_docx.add_argument("file", help="Path to .docx file")
+    p_docx.set_defaults(func=cmd_docx)
+
+    p_dbw = sub.add_parser("db-write", help="Upsert importer JSONL into V2 DB")
+    p_dbw.add_argument("dir", help="Directory containing *.segments.jsonl / *.events.jsonl / *.codebook.jsonl / *.labels.jsonl")
+    p_dbw.set_defaults(func=lambda a: (print(write_imported_dir(a.dir)) or 0))
 
     return p
 
