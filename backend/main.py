@@ -15,6 +15,8 @@ from backend.api import codebook as codebook_router
 from backend.api import events as events_router
 from backend.api import review as review_router
 from backend.api import segments as segments_router
+from backend.api import search as search_router
+from backend.api import legacy as legacy_router
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,6 +39,8 @@ app.include_router(codebook_router.router, prefix="/codebook", tags=["codebook"]
 app.include_router(events_router.router,   prefix="/events",   tags=["events"])
 app.include_router(review_router.router,   prefix="/review",   tags=["review"])
 app.include_router(segments_router.router, prefix="/segments", tags=["segments"])
+app.include_router(search_router.router, prefix="/search", tags=["search"])
+app.include_router(legacy_router.router, prefix="/legacy", tags=["legacy"])
 # --- Dataset & AI Analysis Routes ---
 
 # ✨ --- The Database Session Dependency ---
@@ -170,6 +174,11 @@ def get_single_memo(memo_id: int, db: Session = Depends(get_db)):
 @app.get("/config/defaults", response_model=schemas.AIConfigDefaults)
 def get_defaults():
     return services.get_default_config()
+
+# backend/main.py
+@app.get("/healthz")
+def healthz():
+    return {"status": "ok"}
 
 
 if __name__ == "__main__":
