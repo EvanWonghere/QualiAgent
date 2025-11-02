@@ -53,6 +53,8 @@ def run():
     load_migration("backend.migrations.0001_init_v2")(engine)
     print("Running migration: 0002_docx_import_basics")
     load_migration("backend.migrations.0002_docx_import_basics")(engine)
+    print("Running migration: 0003_indexes")
+    load_migration("backend.migrations.0003_indexes")(engine)
     print("Migration complete.")
 
 
