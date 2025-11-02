@@ -15,6 +15,7 @@ st.set_page_config(
     page_icon="🧠",
     layout="wide",
 )
+st.title("QualiAgent — Phase 1")
 
 # A tiny key helper to keep keys unique and readable everywhere.
 def K(*parts: str) -> str:
@@ -24,246 +25,218 @@ def K(*parts: str) -> str:
 # -------------------------------
 # Config & Utilities
 # -------------------------------
-DEFAULT_API_BASE = "http://127.0.0.1:8000"
+# ===========================
+# Config
+# ===========================
+def get_backend_base_url() -> str:
+    return os.environ.get("BACKEND_BASE_URL", "http://localhost:8000")
+
+API_BASE = get_backend_base_url()
+
+def _handle(resp: requests.Response) -> Any:
+    # ✅ FIX: Check for 400-599 status codes
+    if resp.status_code >= 400:
+        try:
+            # Try to parse the error message from the backend
+            error_json = resp.json()
+            # Raise a clear, structured error
+            raise RuntimeError(f"API Error {resp.status_code}: {error_json.get('detail', resp.text)}")
+        except requests.exceptions.JSONDecodeError:
+            # If the error isn't JSON, just raise the raw text
+            raise RuntimeError(f"API Error {resp.status_code}: {resp.text}")
+
+    ctype = resp.headers.get("Content-Type", "")
+    if "application/json" in ctype or (resp.text and resp.text.strip().startswith(("{", "["))):
+        try:
+            return resp.json()
+        except requests.exceptions.JSONDecodeError:
+            # Handle case where server *says* JSON but sends bad JSON
+            raise RuntimeError(f"Failed to decode JSON response from server. Text: {resp.text[:200]}...")
+    return resp.text
 
 # Sidebar: API base URL (unique key)
 with st.sidebar:
     st.markdown("### ⚙️ Settings")
     api_base_url = st.text_input(
         "API Base URL",
-        value=st.session_state.get("api_base_url", os.environ.get("QUALIAGENT_API_BASE", DEFAULT_API_BASE)),
+        value=st.session_state.get("api_base_url", os.environ.get("QUALIAGENT_API_BASE", API_BASE)),
         key=K("sb", "api_base_url"),
         help="Backend FastAPI base URL. Example: http://127.0.0.1:8000",
     )
     st.session_state["api_base_url"] = api_base_url
 
 # Simple GET helper with basic error handling
-def api_get(path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any] | List[Any]:
-    url = f"{st.session_state['api_base_url'].rstrip('/')}/{path.lstrip('/')}"
-    try:
-        r = requests.get(url, params=params, timeout=10)
-        r.raise_for_status()
-        try:
-            return r.json()
-        except ValueError:
-            return {"non_json_response": r.text}
-    except requests.RequestException as e:
-        st.error(f"GET {url} failed: {e}")
-        return {"error": str(e), "url": url}
-    
-def api_get(path: str, params=None):
-    url = f"{DEFAULT_API_BASE}{path}"
-    r = requests.get(url, params=params, timeout=30)
-    if r.status_code >= 400:
-        raise RuntimeError(r.text)
-    return r.json()
+@st.cache_data(show_spinner=False, ttl=10)
+def api_get(path: str, params: Optional[Dict[str, Any]] = None):
+    url = f"{API_BASE}{path}"
+    return _handle(requests.get(url, params=params, timeout=30))
 
-def api_post(path: str, payload=None):
-    url = f"{DEFAULT_API_BASE}{path}"
-    r = requests.post(url, json=payload or {}, timeout=60)
-    if r.status_code >= 400:
-        raise RuntimeError(r.text)
-    return r.json()
+def api_post(path: str, payload: Optional[Dict[str, Any]] = None):
+    url = f"{API_BASE}{path}"
+    return _handle(requests.post(url, json=payload or {}, timeout=60))
 
 # Cache wrappers (invalidate with TTL to avoid stale dev state)
-@st.cache_data(ttl=5)
-def cached_codebook() -> List[Dict[str, Any]] | Dict[str, Any]:
-    return api_get("/codebook")
+@st.cache_data(show_spinner=False, ttl=10)
+def load_codebook(include_deprecated: bool = False):
+    return api_get("/codebook", params={"include_deprecated": include_deprecated})
 
-@st.cache_data(ttl=5)
-def cached_review_queue() -> List[Dict[str, Any]] | Dict[str, Any]:
-    return api_get("/review/queue")
-
-@st.cache_data(ttl=5)
-def cached_segments(transcript_id: str) -> List[Dict[str, Any]] | Dict[str, Any]:
+@st.cache_data(show_spinner=False, ttl=10)
+def load_segments(transcript_id: str):
     return api_get(f"/segments/{transcript_id}")
+
+def toast_ok(msg: str):
+    st.success(msg, icon="✅")
+
+def toast_warn(msg: str):
+    st.warning(msg, icon="⚠️")
 
 
 # -------------------------------
 # Page Sections
 # -------------------------------
 def page_transcript_viewer():
-    st.subheader("📜 Transcript Viewer")
+    st.subheader("Transcript Viewer")
+    tid = st.text_input("Transcript ID", value=st.session_state.get("transcript_id", "t.docx001"))
+    st.session_state["transcript_id"] = tid
 
-    with st.container():
-        cols = st.columns([2, 1, 1])
-        with cols[0]:
-            transcript_id = st.text_input(
-                "Transcript ID",
-                key=K("tv", "transcript_id"),
-                value=st.session_state.get("transcript_id", "t.001"),
-                help="Enter a transcript identifier, e.g., t.001",
-            )
-            # Keep a copy in session_state (safe; keys are namespaced)
-            st.session_state["transcript_id"] = transcript_id
+    try:
+        segs = load_segments(tid)
+        st.caption(f"Loaded {len(segs)} segments")
+        st.dataframe(
+            [{"id": s["id"], "index": s["index"], "speaker": s.get("speaker"), "text": s["text"]} for s in segs],
+            use_container_width=True, hide_index=True
+        )
+    except Exception as e:
+        st.error(f"Failed to load segments: {e}")
+        return
 
-        with cols[1]:
-            btn_load = st.button("Load Segments", key=K("tv", "load_btn"), width='stretch')
-
-        with cols[2]:
-            show_raw = st.checkbox("Show raw JSON", key=K("tv", "show_raw"), value=False)
-
-    # Auto-load on first paint OR explicit button
-    should_load = btn_load or (not st.session_state.get(K("tv", "has_loaded_once")))
-    if should_load and transcript_id.strip():
-        data = cached_segments(transcript_id.strip())
-        st.session_state[K("tv", "has_loaded_once")] = True
-
-        if isinstance(data, dict) and data.get("error"):
-            st.error(f"Could not fetch segments for '{transcript_id}'.")
-            with st.expander("Details"):
-                st.write(data)
-            return
-
-        # Render segments
-        if isinstance(data, list) and data:
-            # Normalize to DataFrame
-            df = pd.json_normalize(data)
-            st.markdown(f"**{len(df)}** segments found for **{transcript_id}**.")
-            st.dataframe(df, width='stretch')
-        else:
-            st.info("No segments returned.")
-
-        if show_raw:
-            st.code(data, language="json")
+    st.markdown("---")
+    if st.button("Propose Missing (AI or Mock)"):
+        res = api_post(f"/events_v2/propose_missing/{tid}")
+        created = res.get("created", 0)
+        st.success(f"Created {created} proposed events")
+        if res.get("events"):
+            with st.expander("View created events"):
+                st.json(res["events"])
+        # Clear caches so Review tab refreshes
+        st.cache_data.clear()
 
 
 def page_review_queue():
-    st.subheader("🗂️ Review Queue")
+    st.subheader("Review Queue (DB-backed)")
+    reviewer = st.text_input("Reviewer", value=st.session_state.get("reviewer", "Analyst-1"))
+    st.session_state["reviewer"] = reviewer
 
-    # Controls (unique keys)
-    with st.container():
-        cols = st.columns([2, 1])
-        with cols[0]:
-            query = st.text_input(
-                "Filter",
-                key=K("rq", "filter"),
-                placeholder="e.g., speaker:participant AND contains:'anxiety'",
-                help="Client-side filter (simple contains on concatenated fields).",
-            )
-        with cols[1]:
-            refresh = st.button("Refresh", key=K("rq", "refresh"), width='stretch')
+    transcript_id = st.text_input("Transcript ID (optional to filter)", value=st.session_state.get("tid_filter", ""))
+    st.session_state["tid_filter"] = transcript_id
 
-    # Fetch queue (refresh busts cache by touching a dummy session key)
-    if refresh:
-        st.cache_data.clear()
+    queue = api_get("/review_v2/queue", params={"transcript_id": transcript_id or None})
+    st.caption(f"Loaded {len(queue)} proposed events")
+    cb_items = load_codebook(include_deprecated=False)
 
-    data = cached_review_queue()
-    if isinstance(data, dict) and data.get("error"):
-        st.error("Could not fetch review queue.")
-        with st.expander("Details"):
-            st.write(data)
-        return
+    for item in queue:
+        ev = item["event"]
+        labels = item.get("labels", [])
+        eid = ev["id"]
 
-    # Display
-    if isinstance(data, list) and data:
-        df = pd.json_normalize(data)
-        if query:
-            q = query.lower()
-            # naive client-side filter
-            df["_concat"] = df.astype(str).agg(" ".join, axis=1).str.lower()
-            df = df[df["_concat"].str.contains(q, na=False)].drop(columns=["_concat"])
-        st.markdown(f"Showing **{len(df)}** items.")
-        st.dataframe(df, width='stretch')
-    else:
-        st.info("Queue is empty.")
+        with st.expander(f"Event {eid} • status={ev['status']} • summary={ev['summary'][:40]}", expanded=False):
+            # Editable summary
+            new_summary = st.text_area("Summary", value=ev["summary"], key=f"sum_{eid}", height=100)
+
+            # Existing labels
+            st.markdown("**Labels**")
+            if labels:
+                for lab in labels:
+                    cols = st.columns([6, 2, 2])
+                    with cols[0]:
+                        st.write(f"- {lab['codebook_id']} (by {lab['created_by']} @ {lab['created_at']})")
+                    with cols[1]:
+                        if st.button("Accept label", key=f"lab_acc_{lab['id']}"):
+                            api_post(f"/review_v2/label/{lab['id']}/accept", {"reviewer": reviewer})
+                            toast_ok("Label accepted.")
+                    with cols[2]:
+                        if st.button("Reject label", key=f"lab_rej_{lab['id']}"):
+                            api_post(f"/review_v2/label/{lab['id']}/reject", {"reviewer": reviewer})
+                            toast_ok("Label rejected.")
+
+            # Add a new label
+            st.markdown("**Add label**")
+            if cb_items:
+                cb_map = {f"{x['name']} ({x['id']})": x["id"] for x in cb_items}
+                chosen = st.selectbox("Pick code", options=list(cb_map.keys()), key=f"cb_{eid}")
+                if st.button("Add label", key=f"addlab_{eid}"):
+                    api_post(f"/review_v2/event/{eid}/add_label", {"reviewer": reviewer, "codebook_id": cb_map[chosen], "rationale": "fits"})
+                    toast_ok("Label added.")
+
+            # Actions: Accept / Reject / Save Edit
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                if st.button("Accept event", type="primary", key=f"acc_{eid}"):
+                    api_post(f"/review_v2/event/{eid}/accept", {"reviewer": reviewer})
+                    toast_ok("Event accepted.")
+                    st.cache_data.clear(); st.rerun()
+            with c2:
+                if st.button("Reject event", key=f"rej_{eid}"):
+                    api_post(f"/review_v2/event/{eid}/reject", {"reviewer": reviewer})
+                    toast_ok("Event rejected.")
+                    st.cache_data.clear(); st.rerun()
+            with c3:
+                if st.button("Save edits", key=f"edit_{eid}"):
+                    payload = {"reviewer": reviewer, "summary": new_summary, "status": "accepted"}
+                    api_post(f"/review_v2/event/{eid}/edit", payload)
+                    toast_ok("Event edited + accepted.")
+                    st.cache_data.clear(); st.rerun()
 
 
 def page_codebook_manager():
-    st.subheader("🏷️ Codebook Manager")
+    st.subheader("Codebook Manager")
+    c1, c2 = st.columns([3, 2])
+    with c1:
+        include_dep = st.checkbox("Show deprecated", value=False)
+        items = load_codebook(include_dep)
+        st.caption(f"Loaded {len(items)} categories")
+        st.dataframe(
+            [{"id": x["id"], "name": x["name"], "status": x.get("status", "")} for x in items],
+            use_container_width=True,
+            hide_index=True,
+        )
 
-    with st.container():
-        cols = st.columns([2, 1, 1])
-        with cols[0]:
-            search = st.text_input(
-                "Search",
-                key=K("cb", "search"),
-                placeholder="Find codes, tags, or definitions...",
-            )
-        with cols[1]:
-            # Replaced popover with expander for compatibility
-            with st.expander("Info"):
-                st.write("The codebook below is fetched from the backend `/codebook` mock fixture.")
-        with cols[2]:
-            refresh = st.button("Refresh", key=K("cb", "refresh"), width='stretch')
+    with c2:
+        st.markdown("**Merge categories**")
+        if items:
+            id2name = {x["id"]: x["name"] for x in items}
+            from_id = st.selectbox("From (will be deprecated)", options=list(id2name.keys()), format_func=lambda i: f"{id2name[i]} ({i})")
+            into_id = st.selectbox("Into (survivor)", options=list(id2name.keys()), format_func=lambda i: f"{id2name[i]} ({i})")
+            if st.button("Merge", type="primary", key="merge_btn"):
+                if from_id == into_id:
+                    toast_warn("Cannot merge the same category into itself.")
+                else:
+                    api_post("/codebook/merge", {"from_id": from_id, "into_id": into_id})
+                    st.cache_data.clear()
+                    toast_ok("Merged. The 'from' category is now deprecated and labels re-pointed.")
+                    st.rerun()
 
-    if refresh:
-        st.cache_data.clear()
-
-    data = cached_codebook()
-    if isinstance(data, dict) and data.get("error"):
-        st.error("Could not fetch codebook.")
-        with st.expander("Details"):
-            st.write(data)
-        return
-
-    if not isinstance(data, list) or not data:
-        st.info("No codebook items returned.")
-        return
-
-    # Filter locally
-    items = data
-    if search:
-        s = search.lower()
-
-        def _match(item: Dict[str, Any]) -> bool:
-            blob = " ".join([
-                str(item.get("code", "")),
-                str(item.get("label", "")),
-                str(item.get("definition", "")),
-                " ".join(map(str, item.get("examples", []) or [])),
-                " ".join(map(str, item.get("tags", []) or [])),
-            ]).lower()
-            return s in blob
-
-        items = [it for it in data if _match(it)]
-
-    st.markdown(f"Showing **{len(items)} / {len(data)}** items")
-
-    # Render each item (stable unique keys)
-    for idx, item in enumerate(items):
-        code = str(item.get("code", f"code_{idx}"))
-        with st.expander(f"{code} — {item.get('label', 'Untitled')}", expanded=False):
-            col1, col2 = st.columns([2, 1])
-            with col1:
-                st.markdown(f"**Code**: `{code}`")
-                st.write(f"**Label**: {item.get('label', '')}")
-                st.write(f"**Definition**: {item.get('definition', '')}")
-                examples = item.get("examples") or []
-                if examples:
-                    st.write("**Examples:**")
-                    for j, ex in enumerate(examples):
-                        st.markdown(f"- {ex}")
-            with col2:
-                tags = item.get("tags") or []
-                st.write("**Tags**")
-                st.write(", ".join(tags) if tags else "—")
-
-            # Local notes (client only)
-            st.text_area(
-                "Notes (local only)",
-                key=K("cb", "notes", code),
-                placeholder="Add your notes about this code here…",
-            )
+        st.markdown("---")
+        st.markdown("**Deprecate category**")
+        if items:
+            dep_id = st.selectbox("Select to deprecate", options=[x["id"] for x in items], format_func=lambda i: f"{id2name.get(i,i)} ({i})", key="dep_select")
+            if st.button("Deprecate", key="dep_btn"):
+                api_post(f"/codebook/{dep_id}/deprecate")
+                st.cache_data.clear()
+                toast_ok("Category deprecated.")
+                st.rerun()
 
 def page_search_v2():
     st.subheader("Search (V2)")
-    q = st.text_input("Query", value="项目 价值 能力")
-    transcript_id = st.text_input("Transcript ID (optional)", value=st.session_state.get("transcript_id", "t.001"))
+    q = st.text_input("Query", value="项目 价值")
+    tid = st.text_input("Transcript ID (optional)", value=st.session_state.get("transcript_id", ""))
     k = st.slider("Top K", 1, 50, 10)
     if st.button("Search"):
-        with st.spinner("Searching /search/v2 ..."):
-            hits = api_get("/search/v2", params={"q": q, "transcript_id": transcript_id or None, "limit": k})
-            if isinstance(hits, list) and not hits:
-                st.info("No results yet — try a different query or import data.")
-        st.write(f"Found {len(hits)} hits")
-        st.dataframe([{
-            "score": round(h["score"], 3),
-            "segment_id": h["id"],
-            "index": h["index"],
-            "speaker": h.get("speaker"),
-            "text": h["text"]
-        } for h in hits], use_container_width=True)
+        hits = api_get("/search/v2", params={"q": q, "transcript_id": tid or None, "limit": k})
+        st.dataframe(
+            [{"score": round(h["score"], 3), "segment_id": h["id"], "index": h["index"], "speaker": h.get("speaker"), "text": h["text"]} for h in hits],
+            use_container_width=True, hide_index=True
+        )
 
 def page_legacy():
     st.subheader("📚 Legacy (V1)")
@@ -444,6 +417,15 @@ with tabs[3]:
     page_search_v2()
 with tabs[4]:
     page_legacy()
+
+
+st.sidebar.markdown(f"**Backend:** {API_BASE}")
+try:
+    defaults = api_get("/config/defaults")
+    with st.sidebar.expander("Config Defaults"):
+        st.json(defaults)
+except Exception as e:
+    st.sidebar.warning(f"Could not load /config/defaults: {e}")
 
 # IMPORTANT:
 # Do NOT call page_* functions again below.

@@ -11,12 +11,13 @@ from sqlalchemy.orm import Session
 from backend import services, schemas
 
 # backend/main.py (additions)
-from backend.api import codebook as codebook_router
-from backend.api import events as events_router
-from backend.api import review as review_router
-from backend.api import segments as segments_router
-from backend.api import search as search_router
-from backend.api import legacy as legacy_router
+from backend.api import codebook as codebook_router           # GET /codebook, POST /codebook/merge, POST /codebook/{id}/deprecate
+from backend.api import segments as segments_router           # GET /segments/{transcript_id}
+from backend.api import review_v2 as review_v2_router        # /review_v2/*
+from backend.api import events_v2 as events_v2_router        # /events_v2/*
+from backend.api import export as export_router              # /export/*.csv
+from backend.api import search as search_router              # /search/v2
+from backend.api import legacy as legacy_router              # /legacy/* (V1 bridge)
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,16 +33,40 @@ PROJECT_ROOT = Path(__file__).parent.parent
 UPLOAD_DIR = PROJECT_ROOT / "uploaded_files"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 # ---
-app = FastAPI(title="Qualitative Research Agent API")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# --- Create app ---
+app = FastAPI(title="QualiAgent", version="0.1.0")
 
+# --- CORS (local dev-friendly) ---
+origins = os.environ.get("CORS_ORIGINS", "http://localhost:8501,http://127.0.0.1:8501").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in origins if o.strip()],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+# --- Include Routers ---
 app.include_router(codebook_router.router, prefix="/codebook", tags=["codebook"])
-app.include_router(events_router.router,   prefix="/events",   tags=["events"])
-app.include_router(review_router.router,   prefix="/review",   tags=["review"])
 app.include_router(segments_router.router, prefix="/segments", tags=["segments"])
+app.include_router(review_v2_router.router, prefix="/review_v2", tags=["review_v2"])
+app.include_router(events_v2_router.router, prefix="/events_v2", tags=["events_v2"])
+app.include_router(export_router.router, prefix="/export", tags=["export"])
 app.include_router(search_router.router, prefix="/search", tags=["search"])
 app.include_router(legacy_router.router, prefix="/legacy", tags=["legacy"])
+
 # --- Dataset & AI Analysis Routes ---
+
+@app.get("/health")
+def health():
+    return {"ok": True}
+
+@app.get("/config/defaults")
+def config_defaults():
+    return {
+        "OPENAI_LLM_MODEL": os.getenv("OPENAI_LLM_MODEL", "gpt-4o-mini"),
+        "OPENAI_EMBED_MODEL": os.getenv("OPENAI_EMBED_MODEL", "text-embedding-3-small"),
+        "USE_EMBEDDINGS": os.getenv("USE_EMBEDDINGS", "1"),
+    }
 
 # ✨ --- The Database Session Dependency ---
 def get_db():
