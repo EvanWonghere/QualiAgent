@@ -10,6 +10,7 @@ MIGRATIONS: List[str] = [
     "backend.migrations.0002_docx_import_basics",
     "backend.migrations.0003_indexes",
     "backend.migrations.0004_irr",
+    "backend.migrations.0005_transcripts",
 ]
 
 def _load_mod(name: str):

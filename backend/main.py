@@ -5,6 +5,7 @@ import tempfile
 import uuid
 from pathlib import Path
 from typing import List
+from dotenv import load_dotenv
 
 from sqlalchemy.orm import Session
 
@@ -20,6 +21,8 @@ from backend.api import search as search_router              # /search/v2
 from backend.api import legacy as legacy_router              # /legacy/* (V1 bridge)
 from backend.api import importer as importer_router
 from backend.api import irr as irr_router
+from backend.api import transcripts as transcripts_router
+from backend.api import ai as ai_router
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
@@ -28,6 +31,7 @@ import uvicorn
 from backend.db import Base, engine, SessionLocal, db_info
 from backend.migrations.run import run as run_migrations
 
+load_dotenv()  # Load environment variables from .env file if present
 
 # ✨ Create all database tables on startup
 Base.metadata.create_all(bind=engine)
@@ -71,6 +75,8 @@ app.include_router(search_router.router, prefix="/search", tags=["search"])
 app.include_router(legacy_router.router, prefix="/legacy", tags=["legacy"])
 app.include_router(importer_router.router, prefix="/import", tags=["import"])
 app.include_router(irr_router.router, prefix="/irr", tags=["irr"])
+app.include_router(transcripts_router.router, prefix="/transcripts", tags=["transcripts"])
+app.include_router(ai_router.router, prefix="/ai", tags=["ai"])
 
 # --- Dataset & AI Analysis Routes ---
 @app.get("/health")
@@ -80,10 +86,14 @@ def health():
 @app.get("/config/defaults")
 def config_defaults():
     return {
+        "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", ""),
+        "OPENAI_BASE_URL": os.getenv("OPENAI_BASE_URL", "https://api.chatanywhere.tech/v1"),
         "OPENAI_LLM_MODEL": os.getenv("OPENAI_LLM_MODEL", "gpt-4o-mini"),
         "OPENAI_EMBED_MODEL": os.getenv("OPENAI_EMBED_MODEL", "text-embedding-3-small"),
         "USE_EMBEDDINGS": os.getenv("USE_EMBEDDINGS", "1"),
+        "USE_LLM": os.getenv("USE_EMBEDDINGS", "1"),
     }
+
 
 # ✨ --- The Database Session Dependency ---
 def get_db():
@@ -213,14 +223,14 @@ def get_single_memo(memo_id: int, db: Session = Depends(get_db)):
     return memo
 
 # ✨ --- NEW: Endpoint to provide default configs to the frontend ---
-@app.get("/config/defaults", response_model=schemas.AIConfigDefaults)
-def get_defaults():
-    return services.get_default_config()
+# @app.get("/config/defaults", response_model=schemas.AIConfigDefaults)
+# def get_defaults():
+#     return services.get_default_config()
 
 # backend/main.py
-@app.get("/healthz")
-def healthz():
-    return {"status": "ok"}
+# @app.get("/healthz")
+# def healthz():
+#     return {"status": "ok"}
 
 
 if __name__ == "__main__":

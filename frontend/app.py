@@ -90,6 +90,26 @@ def toast_ok(msg: str):
 def toast_warn(msg: str):
     st.warning(msg, icon="⚠️")
 
+def section_ai_suggest():
+    st.markdown("### 🤖 AI Code Suggestions")
+    mode = st.radio("Source", options=["Raw text","Transcript range"], horizontal=True)
+    if mode == "Raw text":
+        txt = st.text_area("Paste text", height=160, key="ai_txt")
+        if st.button("Suggest codes (text)"):
+            out = api_post("/ai/suggest_codes", {"text": txt, "top_k": 5})
+            st.json(out)
+    else:
+        tid = st.text_input(
+            "Transcript ID",
+            key=K("ai_suggest", "transcript_id"),
+            value=st.session_state.get("transcript_id","")
+            )
+        s = st.number_input("Start index", value=0, step=1)
+        e = st.number_input("End index", value=s+5, step=1)
+        if st.button("Suggest codes (range)"):
+            out = api_post("/ai/suggest_codes", {"transcript_id": tid, "start_index": int(s), "end_index": int(e), "top_k": 5})
+            st.json(out)
+
 # -------------------------------
 # Page Sections
 # -------------------------------
@@ -119,6 +139,8 @@ def page_transcript_viewer():
                 st.json(res["events"])
         # Clear caches so Review tab refreshes
         st.cache_data.clear()
+
+    section_ai_suggest()
 
 
 def page_review_queue():
@@ -464,26 +486,44 @@ def page_irr():
         st.session_state["irr_task_id"] = res["task_id"]
 
     task_id = st.text_input("Current Task ID", value=st.session_state.get("irr_task_id",""))
-    if task_id:
-        t = api_get(f"/irr/tasks/{task_id}")
-        st.caption(f"{len(t['items'])} items in task")
-        st.dataframe(t["items"], width='stretch', hide_index=True)
+    if not task_id: return
+    t = api_get(f"/irr/tasks/{task_id}")
 
-        st.markdown("### Submit judgments")
-        coder = st.text_input("Coder ID", value="coderA")
-        dec = st.selectbox("Decision (for events)", options=["accept","reject","(skip)"])
-        codebook_id = st.text_input("Codebook ID (optional for label agreement)", value="")
-        # Just to demo: submit the same decision for all items (you can expand into a per-item UI later)
-        if st.button("Submit for ALL items"):
-            payload = {"coder_id": coder, "judgments": [{"item_id": it["item_id"], "decision": (None if dec=='(skip)' else dec), "codebook_id": (codebook_id or None)} for it in t["items"]]}
-            api_post(f"/irr/tasks/{task_id}/judge", payload)
-            st.success("Submitted")
+    coder = st.text_input("Coder ID", value="coderA")
+    st.markdown("### Per-item judgments")
+    per_judgments = []
+    for it in t["items"]:
+        with st.expander(f"{it['item_type']} • {it['item_id']}", expanded=False):
+            # show content
+            if it["item_type"] == "event":
+                try:
+                    # show event summary
+                    ev = api_get(f"/search/v2", params={"q": it["item_id"], "limit": 0})  # or query DB if you expose /events/{id}
+                except:
+                    pass
+            decision = st.radio("Decision", options=["(skip)","accept","reject"], key=f"dec_{it['item_id']}", horizontal=True)
+            codebook_id = st.text_input("Codebook ID (optional)", value="", key=f"judge_cb_{it['item_id']}")
+            dval = None if decision == "(skip)" else decision
+            per_judgments.append({"item_id": it["item_id"], "decision": dval, "codebook_id": (codebook_id or None)})
+    if st.button("Submit judgments"):
+        api_post(f"/irr/tasks/{task_id}/judge", {"coder_id": coder, "judgments": per_judgments})
+        st.success("Submitted.")
+    if st.button("Compute metrics"):
+        m = api_get(f"/irr/tasks/{task_id}/metrics")
+        st.json(m)
 
-        st.markdown("### Metrics")
-        if st.button("Compute metrics"):
-            m = api_get(f"/irr/tasks/{task_id}/metrics")
-            st.json(m)
-
+def page_transcripts():
+    st.subheader("Transcript Manager")
+    q = st.text_input("Search by id/title/notes", value="")
+    items = api_get("/transcripts", params={"q": q or None})
+    st.caption(f"{len(items)} transcripts")
+    st.dataframe(items, width='stretch', hide_index=True)
+    if items:
+        ids = [it["id"] for it in items]
+        chosen = st.selectbox("Use transcript in other tabs", options=ids)
+        if st.button("Set current transcript"):
+            st.session_state["transcript_id"] = chosen
+            st.success(f"Current transcript set to {chosen}")
 
 # -------------------------------
 # Router (SINGLE render path)
@@ -491,7 +531,7 @@ def page_irr():
 st.title("🧠 QualiAgent — MVP")
 
 # Tabs (simple, prevents double render when used alone)
-tabs = st.tabs(["Importer", "Codebook Manager", "Review Queue", "Transcript Viewer", "Search (V2)", "Legacy", "IRR & QA"])
+tabs = st.tabs(["Importer", "Codebook Manager", "Review Queue", "Transcript Viewer", "Search (V2)", "Legacy", "IRR & QA", "Transcript Manager"])
 with tabs[0]: page_importer()
 with tabs[1]: page_codebook_manager()
 with tabs[2]: page_review_queue()
@@ -499,6 +539,7 @@ with tabs[3]: page_transcript_viewer()
 with tabs[4]: page_search_v2()
 with tabs[5]: page_legacy()
 with tabs[6]: page_irr()
+with tabs[7]: page_transcripts()
 
 
 st.sidebar.markdown(f"**Backend:** {API_BASE}")

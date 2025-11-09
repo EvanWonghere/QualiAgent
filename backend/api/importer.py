@@ -128,4 +128,29 @@ async def import_docx(transcript_id: str = Form(...), file: UploadFile = File(..
     n2 = _upsert_many("events", evs)
     n3 = _upsert_many("codebook", cbs)
     n4 = _upsert_many("event_labels", labs)
-    return {"ok": True, "counts": {"segments": n1, "events": n2, "codebook": n3, "event_labels": n4}}
+
+    with engine.begin() as conn:
+    # Upsert transcript row
+        conn.execute(sql("""
+        INSERT OR IGNORE INTO transcripts(id, title, notes) VALUES(:id, :title, :notes)
+        """), {"id": transcript_id, "title": transcript_id, "notes": None})
+
+        # Recompute stats
+        conn.execute(sql("""
+        INSERT INTO transcript_stats(transcript_id, n_segments, n_events, n_proposed, n_accepted, updated_at)
+        SELECT :tid,
+                (SELECT COUNT(*) FROM segments WHERE transcript_id=:tid),
+                (SELECT COUNT(*) FROM events WHERE transcript_id=:tid),
+                (SELECT COUNT(*) FROM events WHERE transcript_id=:tid AND status='proposed'),
+                (SELECT COUNT(*) FROM events WHERE transcript_id=:tid AND status='accepted'),
+                CURRENT_TIMESTAMP
+        ON CONFLICT(transcript_id) DO UPDATE SET
+            n_segments=excluded.n_segments,
+            n_events=excluded.n_events,
+            n_proposed=excluded.n_proposed,
+            n_accepted=excluded.n_accepted,
+            updated_at=CURRENT_TIMESTAMP
+        """), {"tid": transcript_id})
+        conn.commit()
+
+        return {"ok": True, "counts": {"segments": n1, "events": n2, "codebook": n3, "event_labels": n4}}
