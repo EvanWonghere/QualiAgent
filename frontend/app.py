@@ -90,13 +90,12 @@ def toast_ok(msg: str):
 def toast_warn(msg: str):
     st.warning(msg, icon="⚠️")
 
-
 # -------------------------------
 # Page Sections
 # -------------------------------
 def page_transcript_viewer():
     st.subheader("Transcript Viewer")
-    tid = st.text_input("Transcript ID", value=st.session_state.get("transcript_id", "t.docx001"))
+    tid = st.text_input("Transcript ID", value=st.session_state.get("transcript_id", "t.docx001"), key=K("transcript_viewer", "transcript_id"),)
     st.session_state["transcript_id"] = tid
 
     try:
@@ -104,7 +103,7 @@ def page_transcript_viewer():
         st.caption(f"Loaded {len(segs)} segments")
         st.dataframe(
             [{"id": s["id"], "index": s["index"], "speaker": s.get("speaker"), "text": s["text"]} for s in segs],
-            use_container_width=True, hide_index=True
+            width='stretch, hide_index=True
         )
     except Exception as e:
         st.error(f"Failed to load segments: {e}")
@@ -188,43 +187,43 @@ def page_review_queue():
                     st.cache_data.clear(); st.rerun()
 
 
-def page_codebook_manager():
-    st.subheader("Codebook Manager")
-    c1, c2 = st.columns([3, 2])
-    with c1:
-        include_dep = st.checkbox("Show deprecated", value=False)
-        items = load_codebook(include_dep)
-        st.caption(f"Loaded {len(items)} categories")
-        st.dataframe(
-            [{"id": x["id"], "name": x["name"], "status": x.get("status", "")} for x in items],
-            use_container_width=True,
-            hide_index=True,
-        )
+# def page_codebook_manager():
+#     st.subheader("Codebook Manager")
+#     c1, c2 = st.columns([3, 2])
+#     with c1:
+#         include_dep = st.checkbox("Show deprecated", value=False)
+#         items = load_codebook(include_dep)
+#         st.caption(f"Loaded {len(items)} categories")
+#         st.dataframe(
+#             [{"id": x["id"], "name": x["name"], "status": x.get("status", "")} for x in items],
+#             width='stretch,
+#             hide_index=True,
+#         )
 
-    with c2:
-        st.markdown("**Merge categories**")
-        if items:
-            id2name = {x["id"]: x["name"] for x in items}
-            from_id = st.selectbox("From (will be deprecated)", options=list(id2name.keys()), format_func=lambda i: f"{id2name[i]} ({i})")
-            into_id = st.selectbox("Into (survivor)", options=list(id2name.keys()), format_func=lambda i: f"{id2name[i]} ({i})")
-            if st.button("Merge", type="primary", key="merge_btn"):
-                if from_id == into_id:
-                    toast_warn("Cannot merge the same category into itself.")
-                else:
-                    api_post("/codebook/merge", {"from_id": from_id, "into_id": into_id})
-                    st.cache_data.clear()
-                    toast_ok("Merged. The 'from' category is now deprecated and labels re-pointed.")
-                    st.rerun()
+#     with c2:
+#         st.markdown("**Merge categories**")
+#         if items:
+#             id2name = {x["id"]: x["name"] for x in items}
+#             from_id = st.selectbox("From (will be deprecated)", options=list(id2name.keys()), format_func=lambda i: f"{id2name[i]} ({i})")
+#             into_id = st.selectbox("Into (survivor)", options=list(id2name.keys()), format_func=lambda i: f"{id2name[i]} ({i})")
+#             if st.button("Merge", type="primary", key="merge_btn"):
+#                 if from_id == into_id:
+#                     toast_warn("Cannot merge the same category into itself.")
+#                 else:
+#                     api_post("/codebook/merge", {"from_id": from_id, "into_id": into_id})
+#                     st.cache_data.clear()
+#                     toast_ok("Merged. The 'from' category is now deprecated and labels re-pointed.")
+#                     st.rerun()
 
-        st.markdown("---")
-        st.markdown("**Deprecate category**")
-        if items:
-            dep_id = st.selectbox("Select to deprecate", options=[x["id"] for x in items], format_func=lambda i: f"{id2name.get(i,i)} ({i})", key="dep_select")
-            if st.button("Deprecate", key="dep_btn"):
-                api_post(f"/codebook/{dep_id}/deprecate")
-                st.cache_data.clear()
-                toast_ok("Category deprecated.")
-                st.rerun()
+#         st.markdown("---")
+#         st.markdown("**Deprecate category**")
+#         if items:
+#             dep_id = st.selectbox("Select to deprecate", options=[x["id"] for x in items], format_func=lambda i: f"{id2name.get(i,i)} ({i})", key="dep_select")
+#             if st.button("Deprecate", key="dep_btn"):
+#                 api_post(f"/codebook/{dep_id}/deprecate")
+#                 st.cache_data.clear()
+#                 toast_ok("Category deprecated.")
+#                 st.rerun()
 
 def page_search_v2():
     st.subheader("Search (V2)")
@@ -235,7 +234,7 @@ def page_search_v2():
         hits = api_get("/search/v2", params={"q": q, "transcript_id": tid or None, "limit": k})
         st.dataframe(
             [{"score": round(h["score"], 3), "segment_id": h["id"], "index": h["index"], "speaker": h.get("speaker"), "text": h["text"]} for h in hits],
-            use_container_width=True, hide_index=True
+            width='stretch, hide_index=True
         )
 
 def page_legacy():
@@ -276,7 +275,7 @@ def page_legacy():
             go = st.button(
                 "Generate Codes (Legacy)",
                 key=K("legacy", "gen_btn"),
-                use_container_width=True,
+                width='stretch,
             )
 
         if go:
@@ -290,7 +289,7 @@ def page_legacy():
                 else:
                     if isinstance(codes, list) and codes:
                         st.success(f"Received {len(codes)} codes")
-                        st.dataframe(codes, use_container_width=True)
+                        st.dataframe(codes, width='stretch)
                     else:
                         st.info("No codes returned.")
 
@@ -316,7 +315,7 @@ def page_legacy():
             go_memo = st.button(
                 "Preview Memo",
                 key=K("legacy", "memo_btn"),
-                use_container_width=True,
+                width='stretch,
             )
 
         if go_memo:
@@ -381,7 +380,7 @@ def page_legacy():
         go_search = st.button(
             "Search (Legacy)",
             key=K("legacy", "search_btn"),
-            use_container_width=True,
+            width='stretch,
         )
 
         if go_search:
@@ -395,9 +394,95 @@ def page_legacy():
                 else:
                     if isinstance(hits, list) and hits:
                         st.success(f"{len(hits)} results")
-                        st.dataframe(hits, use_container_width=True)
+                        st.dataframe(hits, width='stretch)
                     else:
                         st.info("No results.")
+
+# --- keep headers and helpers from your existing app.py (as in Phase 1) ---
+
+# Add these new pages:
+
+def page_importer():
+    st.subheader("Importer (DOCX → DB)")
+    tid = st.text_input("Transcript ID", value=st.session_state.get("imp_tid", "t.docx002"))
+    st.session_state["imp_tid"] = tid
+    f = st.file_uploader("Upload .docx", type=["docx"])
+    if f and st.button("Import"):
+        with st.spinner("Uploading and importing..."):
+            import requests
+            url = f"{API_BASE}/import/docx"
+            files = {"file": (f.name, f.getvalue(), "application/vnd.openxmlformats-officedocument.wordprocessingml.document")}
+            data = {"transcript_id": tid}
+            r = requests.post(url, files=files, data=data, timeout=120)
+            res = _handle(r)
+        st.success(f"Imported: {res.get('counts')}")
+        st.cache_data.clear()
+
+def page_codebook_manager():  # replace Phase-1 version with this
+    st.subheader("Codebook Manager")
+    include_dep = st.checkbox("Show deprecated", value=False)
+    items = load_codebook(include_dep)
+    st.caption(f"Loaded {len(items)} categories")
+    # Show definitions inline
+    for x in items:
+        with st.expander(f"{x['name']} ({x['id']}) • status={x.get('status','')}", expanded=False):
+            st.markdown(f"**Definition:** {x.get('definition','') or '(none)'}")
+            # examples
+            if st.button("Show examples", key=f"ex_{x['id']}"):
+                ex = api_get(f"/codebook/{x['id']}/examples", params={"limit": 5})
+                if ex["examples"]:
+                    st.table([{"event_id": e["event_id"], "summary": e["summary"], "excerpt": e["raw_excerpt"], "transcript": e["transcript_id"]} for e in ex["examples"]])
+                else:
+                    st.info("No examples yet.")
+
+            c1, c2 = st.columns(2)
+            with c1:
+                # Merge
+                target = st.text_input("Merge into (codebook_id)", value="", key=f"merge_into_{x['id']}")
+                if st.button("Merge", key=f"merge_btn_{x['id']}") and target.strip():
+                    api_post("/codebook/merge", {"from_id": x["id"], "into_id": target.strip()})
+                    st.cache_data.clear(); st.rerun()
+            with c2:
+                if st.button("Deprecate", key=f"dep_{x['id']}"):
+                    api_post(f"/codebook/{x['id']}/deprecate")
+                    st.cache_data.clear(); st.rerun()
+
+def page_irr():
+    st.subheader("IRR & QA")
+    st.markdown("Create a task, then submit judgments as two coders and compute metrics.")
+
+    st.markdown("### Create IRR task")
+    name = st.text_input("Task name", value="Task A")
+    item_type = st.selectbox("Item type", options=["event", "segment"])
+    scope_tid = st.text_input("Filter transcript_id (optional)", value="")
+    source = st.selectbox("Source (events only)", options=["proposed", "accepted"]) if item_type=="event" else st.selectbox("Source (segments)", options=["all"])
+    sample_size = st.slider("Sample size", 5, 200, 20)
+    if st.button("Create task"):
+        body = {"name": name, "item_type": item_type, "scope_transcript_id": scope_tid or None, "source": source, "sample_size": sample_size}
+        res = api_post("/irr/tasks", body)
+        st.success(f"Created {res['task_id']} with {res['count']} items")
+        st.session_state["irr_task_id"] = res["task_id"]
+
+    task_id = st.text_input("Current Task ID", value=st.session_state.get("irr_task_id",""))
+    if task_id:
+        t = api_get(f"/irr/tasks/{task_id}")
+        st.caption(f"{len(t['items'])} items in task")
+        st.dataframe(t["items"], width='stretch, hide_index=True)
+
+        st.markdown("### Submit judgments")
+        coder = st.text_input("Coder ID", value="coderA")
+        dec = st.selectbox("Decision (for events)", options=["accept","reject","(skip)"])
+        codebook_id = st.text_input("Codebook ID (optional for label agreement)", value="")
+        # Just to demo: submit the same decision for all items (you can expand into a per-item UI later)
+        if st.button("Submit for ALL items"):
+            payload = {"coder_id": coder, "judgments": [{"item_id": it["item_id"], "decision": (None if dec=='(skip)' else dec), "codebook_id": (codebook_id or None)} for it in t["items"]]}
+            api_post(f"/irr/tasks/{task_id}/judge", payload)
+            st.success("Submitted")
+
+        st.markdown("### Metrics")
+        if st.button("Compute metrics"):
+            m = api_get(f"/irr/tasks/{task_id}/metrics")
+            st.json(m)
 
 
 # -------------------------------
@@ -406,17 +491,14 @@ def page_legacy():
 st.title("🧠 QualiAgent — MVP")
 
 # Tabs (simple, prevents double render when used alone)
-tabs = st.tabs(["Codebook Manager", "Review Queue", "Transcript Viewer", "Search (V2)", "Legacy"])
-with tabs[0]:
-    page_codebook_manager()
-with tabs[1]:
-    page_review_queue()
-with tabs[2]:
-    page_transcript_viewer()
-with tabs[3]:
-    page_search_v2()
-with tabs[4]:
-    page_legacy()
+tabs = st.tabs(["Importer", "Codebook Manager", "Review Queue", "Transcript Viewer", "Search (V2)", "Legacy", "IRR & QA"])
+with tabs[0]: page_importer()
+with tabs[1]: page_codebook_manager()
+with tabs[2]: page_review_queue()
+with tabs[3]: page_transcript_viewer()
+with tabs[4]: page_search_v2()
+with tabs[5]: page_legacy()
+with tabs[6]: page_irr()
 
 
 st.sidebar.markdown(f"**Backend:** {API_BASE}")

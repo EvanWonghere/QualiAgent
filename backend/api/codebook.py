@@ -22,6 +22,10 @@ class MergeIn(BaseModel):
     from_id: str
     into_id: str
 
+class ExamplesOut(BaseModel):
+    codebook_id: str
+    examples: list[dict]
+
 @router.post("/merge")
 def merge_codebook(body: MergeIn, db: Session = Depends(get_db)):
     if body.from_id == body.into_id:
@@ -44,3 +48,16 @@ def deprecate_code(codebook_id: str, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback() # ✨ 良好实践：如果出错则回滚
         raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/{codebook_id}/examples", response_model=ExamplesOut)
+def code_examples(codebook_id: str, limit: int = 5, db: Session = Depends(get_db)):
+    q = """
+    SELECT e.id as event_id, e.summary, e.raw_excerpt, e.transcript_id
+    FROM event_labels el
+    JOIN events e ON e.id = el.event_id
+    WHERE el.codebook_id = :cid
+    ORDER BY e.created_at DESC
+    LIMIT :lim
+    """
+    rows = db.execute(sql(q), {"cid": codebook_id, "lim": limit}).mappings().all()
+    return {"codebook_id": codebook_id, "examples": [dict(r) for r in rows]}

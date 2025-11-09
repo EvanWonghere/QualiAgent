@@ -1,62 +1,34 @@
 # backend/migrations/run.py
 from __future__ import annotations
-
 import importlib
-from pathlib import Path
-from typing import Callable, Iterable
-
-from sqlalchemy import inspect
+from typing import Callable, List
 from sqlalchemy.engine import Engine
+from backend.db import engine, db_info
 
-# Import your engine
-from backend.db import engine  # must expose a SQLAlchemy Engine
+MIGRATIONS: List[str] = [
+    "backend.migrations.0001_init_v2",
+    "backend.migrations.0002_docx_import_basics",
+    "backend.migrations.0003_indexes",
+    "backend.migrations.0004_irr",
+]
 
-
-def load_migration(module_name: str) -> Callable[[Engine], None]:
-    mod = importlib.import_module(module_name)
+def _load_mod(name: str):
+    mod = importlib.import_module(name)
     if not hasattr(mod, "upgrade"):
-        raise RuntimeError(f"Migration module {module_name} has no 'upgrade' function")
-    return getattr(mod, "upgrade")
+        raise RuntimeError(f"{name} missing upgrade(engine) function")
+    return mod
 
-
-def list_tables(e: Engine) -> list[str]:
-    insp = inspect(e)
-    try:
-        return sorted(insp.get_table_names())
-    except Exception:  # if DB not initialized or corrupt
-        return []
-
-
-def run():
-    # """
-    # Phase 0.5 migration runner:
-    # - runs 0001_init_v2.upgrade(engine)
-    # """
-    # print("=== QualiAgent Migration Runner ===")
-    # print("DB URL:", engine.url)
-
-    # before = list_tables(engine)
-    # print("Existing tables (before):", before)
-
-    # print("Running migration: backend.migrations.0001_init_v2")
-    # upgrade = load_migration("backend.migrations.0001_init_v2")
-    # upgrade(engine)
-
-    # after = list_tables(engine)
-    # print("Existing tables (after):", after)
-
-    # created = [t for t in after if t not in before]
-    # print("Newly created tables:", created if created else "None")
-    # print("Migration complete.")
-
-    print("Running migration: 0001_init_v2")
-    load_migration("backend.migrations.0001_init_v2")(engine)
-    print("Running migration: 0002_docx_import_basics")
-    load_migration("backend.migrations.0002_docx_import_basics")(engine)
-    print("Running migration: 0003_indexes")
-    load_migration("backend.migrations.0003_indexes")(engine)
+def run(engine_obj: Engine | None = None) -> None:
+    eng = engine_obj or engine  # <- reuse the app engine
+    print("=== QualiAgent Migration Runner ===")
+    print("DB file:", db_info())
+    with eng.begin() as conn:
+        conn.exec_driver_sql("PRAGMA foreign_keys=ON")
+    for name in MIGRATIONS:
+        print("Running migration:", name.split(".")[-1])
+        mod = _load_mod(name)
+        mod.upgrade(eng)
     print("Migration complete.")
-
 
 if __name__ == "__main__":
     run()

@@ -27,3 +27,12 @@ env/
 # 忽略测试和覆盖率报告
 .pytest_cache/
 .coverage
+
+# 忽略数据库文件 (SQLite)
+*.db
+*.sqlite3
+*.db-journal*
+data.db
+
+# 忽略上传的原始文件 (根据 main.py 中的 UPLOAD_DIR)
+uploaded_files/
