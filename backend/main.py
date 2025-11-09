@@ -18,11 +18,15 @@ from backend.api import events_v2 as events_v2_router        # /events_v2/*
 from backend.api import export as export_router              # /export/*.csv
 from backend.api import search as search_router              # /search/v2
 from backend.api import legacy as legacy_router              # /legacy/* (V1 bridge)
+from backend.api import importer as importer_router
+from backend.api import irr as irr_router
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from backend.db import Base, engine, SessionLocal
+from backend.db import Base, engine, SessionLocal, db_info
+from backend.migrations.run import run as run_migrations
 
 
 # ✨ Create all database tables on startup
@@ -34,7 +38,19 @@ UPLOAD_DIR = PROJECT_ROOT / "uploaded_files"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 # ---
 # --- Create app ---
-app = FastAPI(title="QualiAgent", version="0.1.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Code to run on startup
+    print(">>> Using database at:", db_info())
+    # Idempotent migrations at startup
+    # 注意：如果 run_migrations 是一个异步函数，这里应该使用 await run_migrations(engine)
+    # 如果它是一个同步的、阻塞I/O的函数，像这样直接调用在启动阶段通常是可以接受的。
+    run_migrations(engine)
+    yield
+    # Code to run on shutdown (if any)
+    print(">>> Shutting down...")
+
+app = FastAPI(title="QualiAgent", version="0.1.0", lifespan=lifespan)
 
 # --- CORS (local dev-friendly) ---
 origins = os.environ.get("CORS_ORIGINS", "http://localhost:8501,http://127.0.0.1:8501").split(",")
@@ -53,9 +69,10 @@ app.include_router(events_v2_router.router, prefix="/events_v2", tags=["events_v
 app.include_router(export_router.router, prefix="/export", tags=["export"])
 app.include_router(search_router.router, prefix="/search", tags=["search"])
 app.include_router(legacy_router.router, prefix="/legacy", tags=["legacy"])
+app.include_router(importer_router.router, prefix="/import", tags=["import"])
+app.include_router(irr_router.router, prefix="/irr", tags=["irr"])
 
 # --- Dataset & AI Analysis Routes ---
-
 @app.get("/health")
 def health():
     return {"ok": True}

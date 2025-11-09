@@ -7,17 +7,26 @@
 
 # backend/db.py
 from pathlib import Path
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-ROOT = Path(__file__).resolve().parents[1]  # backend/ -> project root
-DB_PATH = ROOT / "data.db"                  # e.g., /Users/you/QualiAgent/data.db
+ROOT = Path(__file__).resolve().parents[1]
+DB_PATH = Path(os.getenv("QUALIAGENT_DB_PATH", str(ROOT / "data.db"))).resolve()
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 DATABASE_URL = f"sqlite:///{DB_PATH}"
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    pool_pre_ping=True,
+    future=True,
+)
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
+SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, future=True)
 Base = declarative_base()
+
+def db_info() -> str:
+    return str(DB_PATH)
+
