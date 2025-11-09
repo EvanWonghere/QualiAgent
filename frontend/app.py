@@ -103,7 +103,7 @@ def page_transcript_viewer():
         st.caption(f"Loaded {len(segs)} segments")
         st.dataframe(
             [{"id": s["id"], "index": s["index"], "speaker": s.get("speaker"), "text": s["text"]} for s in segs],
-            width='stretch, hide_index=True
+            width='stretch', hide_index=True
         )
     except Exception as e:
         st.error(f"Failed to load segments: {e}")
@@ -196,7 +196,7 @@ def page_review_queue():
 #         st.caption(f"Loaded {len(items)} categories")
 #         st.dataframe(
 #             [{"id": x["id"], "name": x["name"], "status": x.get("status", "")} for x in items],
-#             width='stretch,
+#             width='stretch'',
 #             hide_index=True,
 #         )
 
@@ -234,7 +234,7 @@ def page_search_v2():
         hits = api_get("/search/v2", params={"q": q, "transcript_id": tid or None, "limit": k})
         st.dataframe(
             [{"score": round(h["score"], 3), "segment_id": h["id"], "index": h["index"], "speaker": h.get("speaker"), "text": h["text"]} for h in hits],
-            width='stretch, hide_index=True
+            width='stretch', hide_index=True
         )
 
 def page_legacy():
@@ -275,7 +275,7 @@ def page_legacy():
             go = st.button(
                 "Generate Codes (Legacy)",
                 key=K("legacy", "gen_btn"),
-                width='stretch,
+                width='stretch',
             )
 
         if go:
@@ -289,7 +289,7 @@ def page_legacy():
                 else:
                     if isinstance(codes, list) and codes:
                         st.success(f"Received {len(codes)} codes")
-                        st.dataframe(codes, width='stretch)
+                        st.dataframe(codes, width='stretch')
                     else:
                         st.info("No codes returned.")
 
@@ -315,7 +315,7 @@ def page_legacy():
             go_memo = st.button(
                 "Preview Memo",
                 key=K("legacy", "memo_btn"),
-                width='stretch,
+                width='stretch',
             )
 
         if go_memo:
@@ -380,7 +380,7 @@ def page_legacy():
         go_search = st.button(
             "Search (Legacy)",
             key=K("legacy", "search_btn"),
-            width='stretch,
+            width='stretch',
         )
 
         if go_search:
@@ -394,7 +394,7 @@ def page_legacy():
                 else:
                     if isinstance(hits, list) and hits:
                         st.success(f"{len(hits)} results")
-                        st.dataframe(hits, width='stretch)
+                        st.dataframe(hits, width='stretch')
                     else:
                         st.info("No results.")
 
@@ -467,7 +467,7 @@ def page_irr():
     if task_id:
         t = api_get(f"/irr/tasks/{task_id}")
         st.caption(f"{len(t['items'])} items in task")
-        st.dataframe(t["items"], width='stretch, hide_index=True)
+        st.dataframe(t["items"], width='stretch', hide_index=True)
 
         st.markdown("### Submit judgments")
         coder = st.text_input("Coder ID", value="coderA")
