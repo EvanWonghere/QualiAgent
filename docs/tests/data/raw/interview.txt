@@ -1,0 +1,39 @@
+Interviewer: Okay, the recording has started. This is Sarah Jenkins, conducting an interview on September 28th, 2025. With me is Alex Chen, a senior product manager at a mid-sized tech firm. Alex, thank you so much for agreeing to chat with me today about your experiences with remote and hybrid work over the past few years.
+
+Alex: Of course, happy to be here. Or, well, happy to be on this call from my home office.
+
+Interviewer: (laughs) Exactly. Let's start there. Can you take me back to what work was like for you before 2020? What did a typical day or week look like in the office?
+
+Alex: Wow, it feels like a different era. Before, everything was in-person. My company had a really strong "office-first" culture. Not in a bad way, necessarily. It was very vibrant. You’d walk in, grab coffee from the fancy machine, and immediately bump into three or four people. You'd have a quick chat about the weekend, or someone from engineering would grab you and say, "Hey, I have a weird idea about that feature we're working on, got five minutes?" And those five minutes at a whiteboard would often solve a problem that would now take three emails and a scheduled 30-minute meeting to figure out. The energy was palpable. There was a real buzz, especially on launch days. We’d order pizza, huddle around a monitor watching the metrics… it felt communal.
+
+Interviewer: You paint a very collaborative picture. Were there any downsides to that environment?
+
+Alex: Oh, definitely. The commute, for one. An hour each way, door-to-door. That's ten hours a week just gone. And the noise… the open-plan office was great for that "buzz," but terrible for deep focus. I used to have to book a small conference room and put on noise-canceling headphones just to write a proper strategy document. It was a place of constant, low-level interruption. You were always "on." Someone could tap you on the shoulder at any moment. So it was a trade-off: high-energy collaboration for low-quality focus time.
+
+Interviewer: That makes sense. So then the shift to full-time remote work happened. What was that transition like for you and your team?
+
+Alex: Chaotic. Utter chaos for the first month. Nobody had the right equipment. Our VPN couldn't handle the load. But once the technical kinks were ironed out, something surprising happened. I suddenly had hours of uninterrupted time. My productivity on solo tasks went through the roof. I could write, plan, and think without a single person tapping my shoulder. The first few months, honestly, felt like a relief. We were all in it together, figuring it out. Communication was very intentional. You had to schedule a call, you had to write a clear Slack message. Nothing was casual anymore.
+
+Interviewer: And how did that "intentional communication" evolve over time? Has it been a net positive or negative?
+
+Alex: Both. That’s the frustrating answer, but it's true. On the positive side, our documentation has never been better. Because you can't just casually explain something in the hallway, everything has to be written down. Decisions are tracked in Notion or Confluence, which is great for transparency and for new people joining the team. The negative side is the loss of nuance. You miss the body language, the tone in a room. You can't tell if someone's silence on a Zoom call is agreement, confusion, or if they're just distracted by their cat. We've become more efficient but less… connected. The spontaneity is gone. Every interaction feels scheduled and transactional.
+
+Interviewer: Let's talk more about that feeling of connection. How has the social fabric of the company changed?
+
+Alex: It's frayed. That’s the best word for it. We do the virtual happy hours, the online games… and they’re fine, but they feel forced. It’s not the same as grabbing a spontaneous lunch or going for a beer after a tough day. What's really suffered is the cross-team relationship. I used to know the folks in marketing, in legal, because I'd see them in the kitchen. Now, I don't know who half of them are. We hired a new designer on my team six months ago. I've worked with him every single day, but I have no idea if he's married, what his hobbies are, or what he sounds like when he’s not talking about user flows. It’s a very one-dimensional relationship.
+
+Interviewer: How has that impacted your sense of belonging to the company, and perhaps your career development?
+
+Alex: That’s the sharpest edge of the sword. I feel less loyalty to the "company" as an entity. It feels more like I'm a freelancer who just happens to work with the same group of people every day. The mission feels more abstract. As for career development, it's become harder to be visible. In the office, senior leaders would see you putting in the hours, they'd overhear you making a great point in a meeting. You could build a reputation organically. Now, you have to be your own hype-person. You have to meticulously document your wins and broadcast them in the right Slack channel. It feels a bit gross, to be honest. Informal mentorship is also gone. I learned so much in my early career just by listening to senior managers on their calls or having them pull me aside to give me feedback. That just doesn't happen anymore.
+
+Interviewer: It sounds like there have been significant costs. But you're still at the company, and you're still fully remote. What are the gains that keep you there?
+
+Alex: Flexibility. I can't overstate how life-changing it is. I can go to a doctor's appointment in the middle of the day without taking a half-day off. I can make lunch in my own kitchen. My stress levels are way down without the commute. I feel more in control of my day and my life. I'm saving money. And my work itself, the actual output, is higher quality because I have that deep focus time I craved. So I'm in this weird paradox where I'm better at my job and have a better personal life, but I feel less connected to my career and my colleagues.
+
+Interviewer: What do you think the future should look like? If you could design the perfect work model for your company, what would it be?
+
+Alex: I think a structured hybrid model is the only real answer. Not a "come in if you want" policy, because then nobody comes in. It has to be intentional, just like our communication became. For example, my entire team comes into the office Tuesday and Wednesday. Those days are dedicated to the things we lost: brainstorming sessions, collaborative workshops, team lunches, one-on-ones. No deep solo work is expected on those days. Then Monday, Thursday, and Friday are for focused work from home. That way, you get the best of both worlds. You get the community and creativity of the office, and the focus and flexibility of remote. It requires discipline, but I think it's the only way to repair that frayed social fabric without giving up the benefits we've all come to value. It redefines the office as a tool for connection, not just a place to sit with a laptop.
+
+Interviewer: That's a very clear vision. Alex, this has been incredibly insightful. Thank you for sharing your experience so candidly.
+
+Alex: You're welcome. It was helpful to talk it all through. Gives me a lot to think about.
